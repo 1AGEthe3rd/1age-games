@@ -1,0 +1,10 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {normalizePlace,fetchPlaces} from './decentraland.mjs';
+const fixture={id:'00000000-0000-4000-8000-000000000001',title:'Fixture gallery',description:'Art exhibit',disabled:false,content_rating:'E',base_position:'10,-20',positions:['10,-20'],categories:['art-gallery'],contact_email:'fixture@example.invalid'};
+const at='2026-11-26T00:00:00Z';
+test('parcel preserves coordinate and provider identity, excludes contact data',()=>{const p=normalizePlace(fixture,'parcel',at);assert.equal(p.id,'decentraland:'+fixture.id);assert.equal(p.baseParcel,'10,-20');assert.equal(p.launchUrl,'decentraland://?position=10,-20');assert.equal(p.contact_email,undefined);assert.deepEqual(p.names,[]);});
+test('world has no fabricated name or parcel launch',()=>{const p=normalizePlace(fixture,'world',at);assert.equal(p.baseParcel,null);assert.equal(p.launchUrl,null);assert.equal(p.nameResolution,'unverified');});
+test('disabled, unknown rating and restricted destinations excluded',()=>{for(const row of [{...fixture,disabled:true},{...fixture,content_rating:null},{...fixture,content_rating:'A'},{...fixture,title:'Fixture casino'}])assert.equal(normalizePlace(row,'parcel',at),null);});
+test('pagination advances by raw provider page length, not accepted count',async()=>{const page=await fetchPlaces({limit:2,offset:4,fetcher:async url=>{assert.equal(url.searchParams.get('only_places'),'true');return {ok:true,json:async()=>({ok:true,data:[fixture,{...fixture,disabled:true}],total:20})};}});assert.equal(page.records.length,1);assert.equal(page.nextOffset,6);});
+test('provider error never becomes an empty success',async()=>{await assert.rejects(fetchPlaces({fetcher:async()=>({ok:false,status:503})}),/503/);});
