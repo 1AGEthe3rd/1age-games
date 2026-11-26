@@ -1,4 +1,5 @@
 import * as THREE from '../shared/vendor/three.module.js';
+import {mountDiscovery} from './metaverse/browser.mjs';
 import {createWalker} from './walking.mjs';
 import {createFloorMaterial,addArchitecture,addContactShade} from './architecture.mjs';
 const $=s=>document.querySelector(s),stage=$('#scene'),status=$('#status'),panel=$('#panel'),body=$('#panel-body');
@@ -43,7 +44,7 @@ try{
  {id:'sports',name:'GLOBAL SPORTS',subtitle:'Athlete gaming · concept',x:-6.8,z:-2.7,accent:warm,note:'Original sports simulations are planned. No athlete data, likenesses, youth ranking ingestion or live competition yet.',links:[]},
  {id:'originals',name:'1AGE ORIGINALS',subtitle:'Studio-produced games',x:6.8,z:-2.7,accent:purple,note:'Besuto Run is a proposed original game; it is not the NNB lifestyle space. No playable title is included in this prototype.',links:[]},
  {id:'blockchain',name:'BLOCKCHAIN GAMES',subtitle:'Discover independent games',x:-6.65,z:4.5,accent:cyan,note:'Browse the existing index. External games have their own accounts and rules.',links:[['Open game discovery','../application.html']]},
- {id:'worlds',name:'VIRTUAL WORLDS',subtitle:'Explore connected destinations',x:6.65,z:4.5,accent:purple,note:'External launch links only. No shared account, asset transfer, endorsement or official partnership is implied.',links:[['Decentraland','https://decentraland.org/'],['Upland','https://play.upland.me/']]}
+ {id:'worlds',name:'VIRTUAL WORLDS',subtitle:'Explore connected destinations',x:6.65,z:4.5,accent:purple,note:'Search public Decentraland places below or open independent worlds. No shared account, asset transfer or partnership is implied.',links:[['Decentraland','https://decentraland.org/'],['Upland','https://play.upland.me/']]}
  ];depts.forEach(pavilion);
  // Chess is the anchor department: an architectural display table with a full starting position.
  const chess=new THREE.Group();chess.position.set(0,0,-2.1);scene.add(chess);
@@ -56,9 +57,11 @@ try{
  for(const [row,pawn,mat] of [[0,1,ebony],[7,6,ivory]]){[...'rnbqkbnr'].forEach((k,i)=>piece(i,row,k,mat));for(let i=0;i<8;i++)piece(i,pawn,'p',mat);}
  const signGroup=new THREE.Group();signGroup.position.set(0,0,-1.58);chess.add(signGroup);sign(signGroup,'CHESS','Global ratings · play planned',2.25);
  register(chess,{id:'chess',name:'Chess',x:0,z:-2.1,note:'Display board only. Official FIDE ratings and online platform ratings are separate. Playable rules, matchmaking and native ratings are future builds.',links:[['FIDE official ratings','https://ratings.fide.com/'],['Lichess','https://lichess.org/'],['Chess.com','https://www.chess.com/']]},2.85);
- function show(title,links,note='',settings=false){$('#panel-title').textContent=title;body.replaceChildren();if(note){const p=document.createElement('p');p.textContent=note;body.append(p);}for(const [name,url] of links){const a=document.createElement('a');a.textContent=name;a.href=url;body.append(a);}if(settings){const select=document.createElement('select');select.setAttribute('aria-label','Graphics resolution');for(const [n,v] of [['Low','0.8'],['Balanced','1.5'],['High','2']])select.add(new Option(n,v));select.value=String(quality);select.onchange=()=>{quality=Number(select.value);resize();};body.append(select);}walker.clear();if(!panel.open)panel.showModal();}
+ let cancelDiscovery=()=>{};
+ panel.addEventListener('close',()=>cancelDiscovery());
+ function show(title,links,note='',settings=false,discovery=false){cancelDiscovery();cancelDiscovery=()=>{};$('#panel-title').textContent=title;body.replaceChildren();if(note){const p=document.createElement('p');p.textContent=note;body.append(p);}for(const [name,url] of links){const a=document.createElement('a');a.textContent=name;a.href=url;body.append(a);}if(settings){const select=document.createElement('select');select.setAttribute('aria-label','Graphics resolution');for(const [n,v] of [['Low','0.8'],['Balanced','1.5'],['High','2']])select.add(new Option(n,v));select.value=String(quality);select.onchange=()=>{quality=Number(select.value);resize();};body.append(select);}if(discovery)cancelDiscovery=mountDiscovery(body);walker.clear();if(!panel.open)panel.showModal();}
  const distance=d=>Math.hypot(camera.position.x-d.x,camera.position.z-d.z);
- function interact(d){if(!d||distance(d)>4.7){status.textContent='Walk closer to a department.';return;}status.textContent='';show(d.name,d.links,d.note);}
+ function interact(d){if(!d||distance(d)>4.7){status.textContent='Walk closer to a department.';return;}status.textContent='';show(d.name,d.links,d.note,false,d.id==='worlds');}
  const ray=new THREE.Raycaster(),pointer=new THREE.Vector2();
  const walker=createWalker(camera,renderer.domElement,{radius:10.15,eyeHeight:1.75,spawn:[0,1.75,7.7],obstacles,paused:()=>panel.open,onTap:e=>{const rect=renderer.domElement.getBoundingClientRect();pointer.set((e.clientX-rect.left)/rect.width*2-1,-(e.clientY-rect.top)/rect.height*2+1);ray.setFromCamera(pointer,camera);const hit=ray.intersectObjects(targets,false)[0];if(hit)interact(hit.object.userData.department);}});
  $('#interact').onclick=()=>interact([...records].sort((a,b)=>distance(a)-distance(b))[0]);$('#menu').onclick=()=>show('1AGE',[['1AGE World','https://1age.world/'],['1AGE.com','https://1age.com/'],['Existing game discovery','../application.html']],'',true);$('#reset').onclick=()=>{walker.clear();walker.reset();status.textContent='';};
